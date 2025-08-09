@@ -1,0 +1,95 @@
+# SPRING PROPERTIES
+spring:
+  main:
+    banner-mode: off
+  application:
+    name: ${SPRING_APPLICATION_NAME:account-service}
+  instance_id: account-service
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    username: ${SPRING_DATASOURCE_USERNAME:account_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:account_pass}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3308/accountdb}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      enabled: true
+      minimum-idle: 1
+      maximum-pool-size: 5
+      pool-name: HikariPool
+      auto-commit: false
+  jpa:
+    open-in-view: false
+  security:
+    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8081/realms/walkway} # COMMENTED OUT BECAUSE WE HAVE CUSTOM JWTDECODER
+#          jwt-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI:http://localhost:8081/realms/walkway/protocol/openid-connect/certs} # COMMENTED OUT BECAUSE WE HAVE CUSTOM JWTDECODER
+      client:
+        registration:
+          keycloak:
+            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID:account-service}
+            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET:e74FjKK8MGizxdJd17hoFGNu6VhF6lv1}
+        provider:
+          keycloak:
+            issuer-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/walkway}
+
+# SWAGGER CONFIGURATION
+springdoc:
+  api-docs:
+    path: /api/account/swagger/v3/api-docs
+
+# SERVER CONFIGURATION
+server:
+  port: 8083
+
+# CUSTOM PROPERTIES
+application:
+  service:
+    edge-service:
+      external-url: ${APPLICATION_SERVICE_EDGE-SERVICE_EXTERNAL_URL:http://localhost:8082}
+      internal-url: ${APPLICATION_SERVICE_EDGE-SERVICE_INTERNAL_URL:http://edge-service:8082}
+  iam:
+    keycloak:
+      realm:
+        name: ${APPLICATION_IAM_KEYCLOAK_REALM_NAME:walkway}
+        admin:
+          uri: ${APPLICATION_IAM_KEYCLOAK_REALM_ADMIN_URI:http://localhost:8081/admin/realms/walkway}
+      resourceserver:
+        jwt:
+          iss: ${APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_ISS:http://localhost:8081/realms/walkway}
+          jwk-set-uri: ${APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8081/realms/walkway/protocol/openid-connect/certs}
+
+# LOGGING CONFIGURATION
+logging:
+  level:
+    org:
+      springframework:
+        security: TRACE
+    root: WARN
+
+
+# EUREKA CONFIGURATION
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+    region: default
+    prefer-ip-address: true
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    appname: ${spring.application.name}
+    prefer-ip-address: true
+    metadata-map:
+      zone: zone1
+      version: v1
+      environment: dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - prometheus

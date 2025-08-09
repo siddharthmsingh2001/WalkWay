@@ -1,0 +1,62 @@
+{
+  "clientId": "grafana-service",
+  "name": "grafana-service",
+  "description": "Client responsible PKCE OAuth2.0 flow for grafana dashboard",
+  "rootUrl": "http://localhost:3000",
+  "adminUrl": "http://localhost:3000",
+  "baseUrl": "http://localhost:3000/",
+  "surrogateAuthRequired": false,
+  "enabled": true,
+  "alwaysDisplayInConsole": false,
+  "clientAuthenticatorType": "client-secret",
+  "secret": "ppLnDqPXHcRMRrHePqzyVWyRaAZRnVWs",
+  "redirectUris": [
+    "http://localhost:3000/login/generic_oauth"
+  ],
+  "webOrigins": [
+    "http://localhost:3000"
+  ],
+  "notBefore": 0,
+  "bearerOnly": false,
+  "consentRequired": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": true,
+  "serviceAccountsEnabled": false,
+  "publicClient": false,
+  "frontchannelLogout": true,
+  "protocol": "openid-connect",
+  "attributes": {
+    "realm_client": "false",
+    "oidc.ciba.grant.enabled": "false",
+    "client.secret.creation.time": "1752221258",
+    "backchannel.logout.session.required": "true",
+    "standard.token.exchange.enabled": "false",
+    "post.logout.redirect.uris": "http://localhost:3000/login",
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "fullScopeAllowed": true,
+  "nodeReRegistrationTimeout": -1,
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "roles",
+    "profile",
+    "basic",
+    "email"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "organization",
+    "microprofile-jwt"
+  ],
+  "access": {
+    "view": true,
+    "configure": true,
+    "manage": true
+  }
+}

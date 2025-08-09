@@ -1,0 +1,39 @@
+{
+  "name": "ProductItemEvent",
+  "type": "record",
+  "namespace": "com.walkway.kafka_events.product_item_events",
+  "doc": "Product Item Lifecycle events",
+  "fields": [
+    {
+      "name": "eventType",
+      "doc": "Type of the product item event",
+      "type": {
+        "type": "enum",
+        "name": "ProductItemEventType",
+        "symbols": ["CREATED", "DELETED"]
+      }
+    },
+    {
+      "name": "payload",
+      "doc": "The different product item events",
+      "type": [
+        {
+          "type": "record",
+          "name": "ProductItemCreatedEvent",
+          "doc": "A new product item was created",
+          "fields": [
+            { "name": "productItemCode", "type": "int" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "ProductItemDeletedEvent",
+          "doc": "A product item was deleted",
+          "fields": [
+            { "name": "productItemCode", "type": "int" }
+          ]
+        }
+      ]
+    }
+  ]
+}

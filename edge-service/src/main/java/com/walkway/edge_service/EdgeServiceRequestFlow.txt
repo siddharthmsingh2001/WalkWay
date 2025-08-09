@@ -1,0 +1,39 @@
+Services:
+    1) frontend: Build on ReactJs hosted on localhost:3000 where the request is going to be sent from
+    2) edge-service: Acts as our gateway and communicates the keycloak realm and is hosted on localhost:8082
+    3) keycloak: Our IdP for the application hosted on localhost:8081
+    4) account-services: Our downstream microservice which stores user and its meta-data hosted on localhost:8083
+
+Flow for the login :
+    From ReactJs the code is:
+    const HomePage = () => {
+        const handleLogin = () => {
+            window.location.href = 'http://localhost:8082/oauth2/authorization/keycloak';
+        };
+        return (
+            <div className="home-page-container">
+                <header className="home-page-header">
+                    <div className="home-page-nav">
+                        <button className="login-button" onClick={handleLogin}> Login </button>
+                    </div>
+                </header>
+            </div>
+        );
+    };
+
+    When we click on the Login button a Login Authorization Code Flow is initiated, The flow goes something like this:
+
+        PathPatternParserServerWebExchangeMatcher: Checking match of request: '/oauth2/authorization/keycloak'; against '/oauth2/authorization/{registrationId}' | The class PathPatternParserServerWebExchangeMatcher is responsible for matching HTTP request paths against defined patterns("/oauth2/**") in Security Config or predefined by oAuth2Login() as '/oauth2/authorization/{registrationId}'(A predefined endpoint by Spring to initiate the login flow where the registrationId is fetched form the yml file). So the Class tries to match the incoming request to the endpoint /oauth2/authorization/{registrationId} and it was a hit so we move on.
+        DefaultServerRedirectStrategy  : Redirecting to 'http://localhost:8081/realms/walkway/protocol/openid-connect/auth?response_type=code&client_id=edge-service&scope=openid&state=e4k2lEI2KNGrnqrFpKNVhtTeovDJm3nXnKS-9nGhWa4%3D&redirect_uri=http://localhost:8082/login/oauth2/code/keycloak&nonce=Fq-2ujqKh7KzwF6FoecnimadG4toDWmBVYUjZ8r-H8w' | The flow next requires to redirect the browser which is done by the class DefaultServerRedirectStrategy which is responsible to redirect the browser to another URL, this class builds the proper HTTP response (status 302 + Location header) using reactive APIs.
+
+        ONCE THE USER HAS ENTERED THE EMAIL AND PASSWORD THE NEXT CYCLE BEGINS
+        The realm now sends an authorization code back to the edge-service on endpoint /login/oauth2/code/keycloak
+
+        PathPatternParserServerWebExchangeMatcher : Request 'GET /login/oauth2/code/keycloak' doesn't match 'null /oauth2/authorization/{registrationId}' | The class tries out different paths self-defined and pre-defined to see if we get a match
+        PathPatternParserServerWebExchangeMatcher : Checking match of request : '/login/oauth2/code/keycloak'; against '/login/oauth2/code/{registrationId}' | The class gets a match and the next process begins.
+
+        THIS IS THE PART THAT IS NOT LOGGED AND REQUIRES PACKAGE LEVEL LOGGING BUT: The edge-service again sends the authorization code and client id and client secret back to the realm. the realm then again sends back the accessToken as response.
+
+        WebSessionServerSecurityContextRepository : Saved SecurityContext 'SecurityContextImpl [Authentication=OAuth2AuthenticationToken [...]' in WebSession: SpringSessionWebSessionStore$SpringSessionWebSession@3c36ef46 | WebSessionServerSecurityContextRepository is responsible for storing the SecurityContext in a WebFlux application. The log message indicates that authentication was successful, and a SecurityContextImpl was created containing an OAuth2AuthenticationToken, which holds the authenticated user's details (such as principal, authorities, and user attributes from the ID token). This SecurityContext was then stored in a WebSession, which is Spring WebFlux's session abstraction. Because spring.session.store-type=redis is configured, this WebSession is backed by Redis and managed through the SpringSessionWebSessionStore, Spring's default session storage mechanism for reactive applications.
+
+Flow to access a protected resource in a downstream service:

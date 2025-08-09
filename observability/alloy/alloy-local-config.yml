@@ -1,0 +1,46 @@
+discovery.docker "containers_discovery" {
+  host           = "unix:///var/run/docker.sock"
+  refresh_interval = "5m"
+}
+
+discovery.relabel "walkway_containers" {
+  targets = discovery.docker.containers_discovery.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = ".*(account-service|product-service|inventory-service|edge-service|service-registry).*"
+    action        = "keep"
+  }
+  
+  rule{
+  source_labels = ["__meta_docker_container_name"]
+  target_label  = "service_name"
+  regex         = "/(.*)"
+  action        = "replace"
+  }
+}
+
+loki.source.docker "walkway_log_scrape" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.walkway_containers.output
+  forward_to = [loki.write.walkway_loki_push.receiver]
+}
+
+loki.write "walkway_loki_push" {
+  endpoint {
+    url = "http://loki:3101/loki/api/v1/push"
+    headers = {"X-Scope-OrgID"="tenant1"}
+  }
+}
+
+prometheus.scrape "walkway_metric_scrape"{
+  targets = discovery.relabel.walkway_containers.output
+  metrics_path = "/actuator/prometheus"
+  forward_to = [prometheus.remote_write.walkway_metric_write.receiver]
+}
+
+prometheus.remote_write "walkway_metric_write"{
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+    headers = {"X-Scope-OrgID"="tenant1"}
+  }
+}

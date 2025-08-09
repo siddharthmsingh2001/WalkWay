@@ -1,0 +1,38 @@
+server:
+  http_listen_port: 3101
+  http_listen_address: 0.0.0.0
+  grpc_listen_port: 9095
+
+common:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  replication_factor: 1
+  path_prefix: /loki
+
+schema_config:
+  configs:
+    - from: 2025-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  filesystem:
+    directory: /loki/chunks
+
+limits_config:
+  reject_old_samples: false
+
+# Following are the nodes of a Loki system. All of these together form a complete logging system. Also the nodes are used for different jobs loki-read is made up of Query-Frontend, Querier | loki-write is made up of Distributor, Ingester | loki-backend is made up of Compactor, Ruler, Auth Proxy, Index Gateway
+# Alloy -> Distributor: Log agents send logs to the Distributor.
+# Distributor -> Ingesters: Distributor routes logs to Ingesters.
+# Ingesters -> Object Storage: Ingesters flush chunks to MinIO.
+# Grafana/Clients -> Query-Frontend -> Queriers: Queries go through the Query-Frontend (if enabled) to Queriers.
+# Queriers -> Ingesters / Object Storage: Queriers get recent data from Ingesters and historical data from MinIO.
+# Compactor <-> Object Storage: Compactor optimizes data in MinIO.
+# Ruler <-> Queriers: Ruler queries Loki (via Queriers) to evaluate rules.
