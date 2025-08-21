@@ -1,0 +1,99 @@
+# SPRING PROPERTIES
+spring:
+  main:
+    banner-mode: off
+  application:
+    name: ${SPRING_APPLICATION_NAME:inventory-service}
+  instance_id: inventory-service
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    username: ${SPRING_DATASOURCE_USERNAME:account_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:account_pass}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3310/inventorydb}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      enabled: true
+      minimum-idle: 1
+      maximum-pool-size: 5
+      pool-name: HikariPool
+      auto-commit: false
+  jpa:
+    open-in-view: false
+#  kafka:
+#    consumer:
+#      bootstrap-servers: ${SPRING_KAFKA_CONSUMER_BOOTSTRAP-SERVERS:localhost:9092}
+#      group-id: ${SPRING_KAFKA_CONSUMER_GROUP-ID:inventoryGroup}
+#      auto-offset-reset: earliest
+#      key-deserializer:
+#      value-deserializer:
+
+# CUSTOM PROPERTIES
+application:
+  service:
+    edge-service:
+      external-url: ${APPLICATION_SERVICE_EDGE_SERVICE_EXTERNAL_URL:http://localhost:8082}
+      internal-url: ${APPLICATION_SERVICE_EDGE_SERVICE_INTERNAL_URL:http://edge-service:8082}
+  iam:
+    keycloak:
+      resourceserver:
+        jwt:
+          iss: ${APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_ISS:http://localhost:8081/realms/walkway}
+          jwk-set-uri: ${APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8081/realms/walkway/protocol/openid-connect/certs}
+  kafka:
+    bootstrap-servers: ${APPLICATION_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    group-id: ${spring.application.name}
+    schema-registry-url: ${APPLICATION_KAFKA_SCHEMA_REGISTRY_URL:http://localhost:9094}
+    topics:
+      product-item:
+        name: product-item
+      product-item-dlt:
+        name: product-item.DLT
+        partitions: 1
+        replicas: 1
+        retention: 300000
+
+# SERVER CONFIGURATION
+server:
+  port: ${SERVER_PORT:8085}
+
+# SWAGGER CONFIGURATION
+springdoc:
+  api-docs:
+    path: /api/inventory/swagger/v3/api-docs
+
+# LOGGING CONFIGURATION
+logging:
+  level:
+    org:
+      springframework:
+        security: TRACE
+    com:
+      walkway:
+        inventory_service: TRACE
+    root: WARN
+
+# EUREKA CONFIGURATION
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+    region: default
+    prefer-ip-address: true
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    appname: ${spring.application.name}
+    prefer-ip-address: true
+    metadata-map:
+      zone: zone1
+      version: v1
+      environment: dev
+
+# PROMETHEUS CONFIGURATION
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - prometheus

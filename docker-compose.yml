@@ -1,0 +1,343 @@
+services:
+  account_ddb:
+    image: mysql:8.0.41
+    container_name: account_ddb
+    environment:
+      MYSQL_ROOT_PASSWORD: user-root
+      MYSQL_DATABASE: accountdb
+      MYSQL_USER: account_user
+      MYSQL_PASSWORD: account_pass
+    ports:
+      - "3308:3306"
+    volumes:
+      - accountdb_data:/var/lib/mysql
+    networks:
+      - network
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+  product_ddb:
+    image: mysql:8.0.41
+    container_name: product_ddb
+    environment:
+      MYSQL_ROOT_PASSWORD: user-root
+      MYSQL_DATABASE: productdb
+      MYSQL_USER: account_user
+      MYSQL_PASSWORD: account_pass
+    ports:
+      - "3309:3306"
+    volumes:
+      - productdb_data:/var/lib/mysql
+    networks:
+      - network
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+  inventory_ddb:
+    image: mysql:8.0.41
+    container_name: inventory_ddb
+    environment:
+      MYSQL_ROOT_PASSWORD: user-root
+      MYSQL_DATABASE: inventorydb
+      MYSQL_USER: account_user
+      MYSQL_PASSWORD: account_pass
+    ports:
+      - "3310:3306"
+    volumes:
+      - inventorydb_data:/var/lib/mysql
+    networks:
+      - network
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+  auth_dredis:
+    image: redis:8.0.0
+    container_name: auth_dredis
+    volumes:
+      - authredis_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - network
+
+  keycloak:
+    image: keycloak/keycloak:26.2.5
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    ports:
+      - "8081:8080"
+    networks:
+      - network
+
+  service-registry:
+    image: walkway/service-registry:0.0.1
+    container_name: service-registry
+    build: ./service-registry
+    environment:
+      SPRING_APPLICATION_NAME: service-registry
+      SERVER_PORT: 8761
+    ports:
+      - "8761:8761"
+    networks:
+      - network
+
+  edge-service:
+    image: walkway/edge-service:0.0.1
+    container_name: edge-service
+    build: ./edge-service
+    environment:
+      SPRING_APPLICATION_NAME: edge-service
+      SERVER_PORT: 8082
+      SPRING_DATA_REDIS_HOST: auth_dredis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_SESSION_STORE_TYPE: redis
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID: edge-service
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET: IpWUsWsRv9y2UxT7k5Aw7X7o7bjrcG4u
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI: http://localhost:8082/login/oauth2/code/keycloak
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8081/realms/walkway/protocol/openid-connect/auth
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/walkway/protocol/openid-connect/token
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/walkway/protocol/openid-connect/certs
+      APPLICATION_SERVICE_FRONTEND_URL: http://localhost:2000
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    ports:
+     - "8082:8082"
+    networks:
+      - network
+    depends_on:
+      - keycloak
+      - auth_dredis
+      - service-registry
+#    restart: on-failure
+
+  account-service:
+    image: walkway/account-service:0.0.1
+    container_name: account-service
+    build: ./account-service
+    environment:
+      SPRING_APPLICATION_NAME: account-service
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_USERNAME: account_user
+      SPRING_DATASOURCE_PASSWORD: account_pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://account_ddb:3306/accountdb
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID: account-service
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET: e74FjKK8MGizxdJd17hoFGNu6VhF6lv1
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/walkway
+      APPLICATION_SERVICE_EDGE-SERVICE_EXTERNAL_URL: http://localhost:8082
+      APPLICATION_SERVICE_EDGE-SERVICE_INTERNAL_URL: http://edge-service:8082
+      APPLICATION_IAM_KEYCLOAK_REALM_NAME: walkway
+      APPLICATION_IAM_KEYCLOAK_REALM_ADMIN_URI: http://keycloak:8080/admin/realms/walkway
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_ISS: http://localhost:8081/realms/walkway
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/walkway/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    ports:
+      - "8083:8083"
+    networks:
+      - network
+    depends_on:
+      - keycloak
+      - account_ddb
+      - service-registry
+#    restart: on-failure
+
+  product-service:
+    image: walkway/product-service:0.0.1
+    container_name: product-service
+    build: ./product-service
+    environment:
+      SPRING_APPLICATION_NAME: product-service
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_USERNAME: account_user
+      SPRING_DATASOURCE_PASSWORD: account_pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://product_ddb:3306/productdb
+      APPLICATION_SERVICE_EDGE-SERVICE_EXTERNAL_URL: http://localhost:8082
+      APPLICATION_SERVICE_EDGE-SERVICE_INTERNAL_URL: http://edge-service:8082
+      APPLICATION_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      APPLICATION_KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:9094
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_ISS:  http://localhost:8081/realms/walkway
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/walkway/protocol/openid-connect/certs
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    depends_on:
+      - keycloak
+      - product_ddb
+      - service-registry
+    networks:
+      - network
+    ports:
+      - "8084:8084"
+#    restart: on-failure
+
+  inventory-service:
+    image: walkway/inventory-service:0.0.1
+    container_name: inventory-service
+    build: ./inventory-service
+    environment:
+      SPRING_APPLICATION_NAME: inventory-service
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_USERNAME: account_user
+      SPRING_DATASOURCE_PASSWORD: account_pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://inventory_ddb:3306/inventorydb
+      APPLICATION_SERVICE_EDGE_SERVICE_EXTERNAL_URL: http://localhost:8082
+      APPLICATION_SERVICE_EDGE_SERVICE_INTERNAL_URL: http://edge-service:8082
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_ISS: http://localhost:8081/realms/walkway
+      APPLICATION_IAM_KEYCLOAK_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/walkway/protocol/openid-connect/certs
+      APPLICATION_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      APPLICATION_KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:9094
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    depends_on:
+      - keycloak
+      - inventory_ddb
+      - service-registry
+    networks:
+      - network
+    ports:
+      - "8085:8085"
+#    restart: on-failure
+
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: kafka
+    environment:
+      KAFKA_LISTENERS: CONTROLLER://:9091,PLAINTEXT://:9093,PLAINTEXT_HOST://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9091
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+#    healthcheck:
+#      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:9093", "--list"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+    networks:
+      - network
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.2.15
+    container_name: schema-registry
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:9094
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9093
+    ports:
+      - "9094:9094"
+    depends_on:
+      - kafka
+    restart: on-failure
+    networks:
+      - network
+
+  loki:
+    image: grafana/loki:3.4.3
+    container_name: loki
+    command: "-config.file=/loki/config.yml -target=all"
+    ports:
+      - "3101:3101"
+    volumes:
+      - ./observability/loki/loki-config.yml:/loki/config.yml:ro
+      - loki_data:/loki
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - alloy
+    networks:
+      - network
+
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/prometheus/prometheus.yaml:ro
+      - prometheus_data:/prometheus
+    command: "--config.file=/prometheus/prometheus.yaml --web.enable-remote-write-receiver"
+    networks:
+      - network
+    depends_on:
+      - alloy
+
+  alloy:
+    image: grafana/alloy:v1.9.2
+    container_name: alloy
+    volumes:
+      - ./observability/alloy/alloy-local-config.yml:/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:  run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /alloy/config.alloy
+    ports:
+      - "12345:12345"
+    depends_on:
+      - account-service
+      - edge-service
+      - service-registry
+    networks:
+      - network
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    container_name: grafana
+    environment:
+      - GF_PATHS_PROVISIONING=/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=true
+      - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
+      - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=grafana-service
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=ppLnDqPXHcRMRrHePqzyVWyRaAZRnVWs
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=http://localhost:8081/realms/walkway/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/walkway/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/walkway/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(realm_access.roles[*], 'ADMIN') && 'Admin' || contains(realm_access.roles[*], 'EDITOR') && 'Editor' || 'Viewer'
+    volumes:
+      - ./observability/grafana/datasource.yml:/grafana/provisioning/datasources/ds.yml:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - network
+
+volumes:
+  accountdb_data:
+  productdb_data:
+  inventorydb_data:
+  authredis_data:
+  keycloak_data:
+  loki_data:
+  prometheus_data:
+
+networks:
+  network:
+
+# docker compose up -d OR docker compose -f {filename} up -d : To run this file in the detached state if containers or volumes or network don't exist it will create one and run it. If they exist it will run them without duplicating
+# docker ps -a : Shows all the containers with their status
+# docker stop {containerID | containerName} : To stop a particular Container
+# docker start {containerID | containerName} : To start a particular Container
+# docker volume ls : To print all the volumes
+# docker container ls : To print all the running container
+# docker image ls : To print all the existing images
+# docker volume rm {volumeName} : To remove the volume
+# docker container rm {containerName} : To remove the container
+# docker logs -f {containerID} : To see the logs of tha container

@@ -1,0 +1,26 @@
+package com.walkway.inventory_service.service;
+
+import com.walkway.inventory_service.dto.inventory_product_snapshot.InventoryProductSnapshotCreateDto;
+import com.walkway.inventory_service.dto.inventory_product_snapshot.InventoryProductSnapshotDto;
+import com.walkway.inventory_service.dto.inventory_product_snapshot.InventoryProductSnapshotUpdateDto;
+import com.walkway.inventory_service.entity.InventoryProductSnapshot;
+import com.walkway.inventory_service.exception.inventory_product_snapshot.InventoryProductSnapshotAlreadyExistsException;
+import com.walkway.inventory_service.exception.inventory_product_snapshot.InventoryProductSnapshotNotFoundException;
+import jakarta.transaction.Transactional;
+
+import java.util.List;
+
+public interface InventoryProductSnapshotService {
+
+    InventoryProductSnapshotDto createInventoryProductSnapshot(InventoryProductSnapshotCreateDto inventoryProductSnapshotCreateDto) throws InventoryProductSnapshotAlreadyExistsException;
+
+    List<InventoryProductSnapshotDto> getInventoryProductSnapshot();
+
+    InventoryProductSnapshotDto getInventoryProductSnapshot(Integer productCode) throws InventoryProductSnapshotNotFoundException;
+
+    InventoryProductSnapshotDto updateInventoryProductSnapshot(InventoryProductSnapshotUpdateDto inventoryProductSnapshotUpdateDto, Integer productSnapshotId) throws InventoryProductSnapshotNotFoundException, InventoryProductSnapshotAlreadyExistsException;
+
+    void deleteInventoryProductSnapshot(Integer productSnapshotId) throws InventoryProductSnapshotNotFoundException;
+
+    void deleteInventoryProductSnapshotByProductCode(Integer productCode) throws InventoryProductSnapshotNotFoundException;
+}

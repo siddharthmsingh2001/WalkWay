@@ -1,0 +1,10 @@
+### IDE files ###
+.idea/
+.vscode/
+**/.idea/
+
+### maven build folders ###
+**/target/
+
+### Misc ###
+**/HELP.md

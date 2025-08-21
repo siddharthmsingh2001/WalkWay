@@ -1,0 +1,154 @@
+spring:
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6380}
+  main:
+    banner-mode: off
+  application:
+    name: ${SPRING_APPLICATION_NAME:edge-service}
+  session:
+    store-type: ${SPRING_SESSION_STORE_TYPE:redis}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: account-route
+              uri: lb://ACCOUNT-SERVICE
+              predicates:
+                - Path=/account/**
+              filters:
+                - RewritePath=/account/(?<segment>.*), /api/account/${segment}
+                - TokenRelay
+                - SaveSession
+            - id: product-route
+              uri: lb://PRODUCT-SERVICE
+              predicates:
+                - Path=/product/**
+              filters:
+                - RewritePath=/product/(?<segment>.*), /api/product/${segment}
+                - TokenRelay
+                - SaveSession
+            - id: inventory-route
+              uri: lb://INVENTORY-SERVICE
+              predicates:
+                - Path=/inventory/**
+              filters:
+                - RewritePath=/inventory/(?<segment>.*), /api/inventory/${segment}
+                - TokenRelay
+                - SaveSession
+
+#            - id: account-register-route
+#              uri: lb://ACCOUNT-SERVICE
+#              predicates:
+#                - Path=/account/register
+#              filters:
+#                - RewritePath=/account/register, /api/account/register
+#            - id: account-user-route
+#              uri: lb://ACCOUNT-SERVICE
+#              predicates:
+#                  - Path=/account/user/**
+#              filters:
+#                - RewritePath=/account/user/(?<segment>.*), /api/account/user/${segment}
+#                - TokenRelay
+#                - SaveSession
+#            - id: account-swagger-route
+#              uri: lb://ACCOUNT-SERVICE
+#              predicates:
+#                  - Path=/account/swagger/**
+#              filters:
+#                - RewritePath=/account/swagger/(?<segment>.*), /api/account/swagger/${segment}
+#                - TokenRelay
+#                - SaveSession
+#            - id: product-swagger-route
+#              uri: lb://PRODUCT-SERVICE
+#              predicates:
+#                - Path=/product/swagger/**
+#              filters:
+#                - RewritePath=/product/swagger/(?<segment>.*), /api/product/swagger/${segment}
+#                - TokenRelay
+#                - SaveSession
+#            - id: inventory-swagger-route
+#              uri: lb://INVENTORY-SERVICE
+#              predicates:
+#                - Path=/inventory/swagger/**
+#              filters:
+#                - RewritePath=/inventory/swagger/(?<segment>.*), /api/inventory/swagger/${segment}
+#                - TokenRelay
+#                - SaveSession
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID:edge-service}
+            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET:IpWUsWsRv9y2UxT7k5Aw7X7o7bjrcG4u}
+            authorization-grant-type: authorization_code
+            redirect-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI:http://localhost:8082/login/oauth2/code/keycloak}
+            scope: openid
+        provider:
+          keycloak:
+             authorization-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI:http://localhost:8081/realms/walkway/protocol/openid-connect/auth}
+             token-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI:http://localhost:8081/realms/walkway/protocol/openid-connect/token}
+             jwk-set-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI:http://localhost:8081/realms/walkway/protocol/openid-connect/certs}
+
+# CUSTOM CONFIGURATION
+application:
+  service:
+    frontend:
+      url: ${APPLICATION_SERVICE_FRONTEND_URL:http://localhost:2000}
+
+# SPRING DOC CONFIGURATION
+springdoc:
+  api-docs:
+    enabled: true
+    path: /swagger/v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger/swagger-ui.html
+    urls:
+      - url: /account/swagger/v3/api-docs
+        name: Account Service API
+      - url: /product/swagger/v3/api-docs
+        name: Product Service API
+      - url: /inventory/swagger/v3/api-docs
+        name: Inventory Service API
+
+# SERVER CONFIGURATION
+server:
+  port: ${SERVER_PORT:8082}
+
+# LOGGING CONFIGURATION
+logging:
+  level:
+    root: warn
+    org:
+      springframework:
+        security: DEBUG
+
+
+# EUREKA CONFIGURATION
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+    region: default
+    prefer-ip-address: true
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    appname: ${spring.application.name}
+    prefer-ip-address: true
+    metadata-map:
+      zone: zone1
+      version: v1
+      environment: dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - prometheus
